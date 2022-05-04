@@ -37,9 +37,9 @@ export const getPieceMatrix = (
         case ShapeType.LPiece:
             return {
                 matrix: [
-                    [0, 1, 0],
-                    [0, 1, 0],
-                    [0, 1, 1],
+                    [1, 0],
+                    [1, 0],
+                    [1, 1],
                 ],
                 pivot: { x: 1, y: 1 },
             };
@@ -55,26 +55,26 @@ export const getPieceMatrix = (
         case ShapeType.SPiece:
             return {
                 matrix: [
-                    [4, 4, 0],
                     [0, 4, 4],
+                    [4, 4, 0],
                 ],
                 pivot: { x: 1, y: 1 },
             };
         case ShapeType.ZPiece:
             return {
                 matrix: [
-                    [0, 3, 3],
                     [3, 3, 0],
+                    [0, 3, 3],
                 ],
                 pivot: { x: 1, y: 1 },
             };
         case ShapeType.TPiece:
             return {
                 matrix: [
-                    [0, 5, 0],
                     [5, 5, 5],
+                    [0, 5, 0],
                 ],
-                pivot: { x: 1, y: 1 },
+                pivot: { x: 1, y: 0 },
             };
         case ShapeType.OPiece:
             return {

@@ -53,19 +53,16 @@ export class ClassicGame {
             }
         });
 
-        this.board.incorporate(this.player);
-
-        this.board.collision(this.player);
+        // this.board.collision(this.player);
     }
 
-    update(): void {
+    update() {
         if (get(this.pause)) return;
 
         this.counter++;
-        if (this.counter >= 12) {
-            this.counter = 0;
-            this.player.center.position.y -= 30;
-        }
+
+        this.player.update(this.board, this.counter);
+        this.board.update(this.player, this.counter);
 
         // if (this.board.collision(this.player) === true) {
         // this.pause.set(true);
@@ -89,7 +86,7 @@ export class ClassicGame {
         this.player = new Player(
             this.renderer.root,
             ShapeType.TPiece,
-            new Vec2(0 - 15, 270 - 15)
+            new Vec2(0 - 15, 300 - 15)
         );
     }
 }

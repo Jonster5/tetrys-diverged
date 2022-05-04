@@ -5,7 +5,7 @@ import { Vec2 } from 'raxis-core';
 export class Board {
     matrix: number[][];
 
-    readonly bounds: Vec2;
+    readonly size: Vec2;
 
     constructor(size: Vec2) {
         this.matrix = [];
@@ -18,11 +18,10 @@ export class Board {
             }
         }
 
-        this.bounds = Vec2.multiplyScalar(size, 30).divideScalar(2);
-        console.log(this.bounds.toString());
+        this.size = size.clone();
     }
 
-    update(player: Player) {
+    update(player: Player, clock: number) {
         player.matrix.forEach((row, y) => {
             row.forEach((s, x) => {
                 if (s === 0) return;
@@ -42,42 +41,75 @@ export class Board {
 
     incorporate(player: Player) {
         const matrix = player.matrix;
-        const position = this.spatialToMatrix(player.center.position);
+        const pos = this.spatialToMatrix(player.center.position);
+        const pivot = player.pivot;
 
-        for (let y = 0; y < matrix.length; y++) {
-            for (let x = 0; x < matrix[y].length; x++) {
-                if (matrix[y][x] === ShapeType.None) continue;
+        for (let r = 0; r < matrix.length; r++) {
+            for (let c = 0; c < matrix[r].length; c++) {
+                if (matrix[r][c] === ShapeType.None) continue;
 
-                this.matrix[y + position.y][x + position.x] = matrix[y][x];
+                const x = pos.x + this.size.x / 2 + (c - pivot.x);
+                const y = -pos.y + this.size.y / 2 + (r - pivot.y) - 1;
+
+                if (x < 0 || x > this.size.x || y < 0 || y > this.size.y)
+                    continue;
+
+                this.matrix[y][x] = matrix[r][c];
             }
         }
     }
 
-    collision(player: Player): boolean {
-        const position = this.spatialToMatrix(player.center.position);
+    getMerged(props: {
+        matrix: number[][];
+        position: Vec2;
+        pivot: Vec2;
+    }): number[][] {
+        const { matrix, position, pivot } = props;
+        const pos = this.spatialToMatrix(position);
 
-        const collisionMatrix = new Array(this.matrix.length + 1)
-            .fill(0)
-            .map(() => new Array(this.matrix[0].length + 2).fill(0));
+        const merged = JSON.parse(JSON.stringify(this.matrix));
 
-        for (let y = 0; y < collisionMatrix.length; y++) {
-            for (let x = 0; x < collisionMatrix[0].length; x++) {
-                if (x === 0 || x === collisionMatrix[0].length - 1) {
-                    collisionMatrix[y][x] = 1;
-                } else if (y === collisionMatrix.length - 1) {
-                    collisionMatrix[y][x] = 1;
-                }
+        for (let r = 0; r < matrix.length; r++) {
+            for (let c = 0; c < matrix[r].length; c++) {
+                if (matrix[r][c] === ShapeType.None) continue;
+
+                const x = pos.x + this.size.x / 2 + (c - pivot.x);
+                const y = -pos.y + this.size.y / 2 + (r - pivot.y) - 1;
+
+                if (
+                    x < 0 ||
+                    x > this.size.x - 1 ||
+                    y < 0 ||
+                    y > this.size.y - 1
+                )
+                    continue;
+
+                merged[y][x] = matrix[r][c];
             }
         }
 
-        console.log(collisionMatrix);
+        return merged;
+    }
 
-        // if (position.y - matrix.length / 2 <= -this.matrix.length / 2 - 1) {
-        //     player.center.position.y += 30;
+    overlap(current: number[][], future: number[][]): boolean {
+        const cc = current.reduce((acc, row) => {
+            return (
+                acc +
+                row.reduce((acc, val) => {
+                    return acc + (val !== 0 ? 1 : 0);
+                }, 0)
+            );
+        }, 0);
 
-        //     return true;
-        // }
+        const fc = future.reduce((acc, row) => {
+            return (
+                acc +
+                row.reduce((acc, val) => {
+                    return acc + (val !== 0 ? 1 : 0);
+                }, 0)
+            );
+        }, 0);
 
-        return false;
+        return cc > fc;
     }
 }
