@@ -6,16 +6,19 @@ import { Vec2 } from 'raxis-core';
 export class Renderer2d<T extends RenderSystem2d> {
     system: T;
 
-    private _update: (() => void) | null = null;
+    private _update: ((uc?: number, fc?: number) => void) | null = null;
 
     private _animator: number | null = null;
 
-    private _ts: number;
     private _ups: number;
     private _prev: number;
     private _lag: number;
     private _times: number[];
     private _fps: number;
+
+    private _fc: number;
+    private _uc: number;
+    private _uArg: any;
 
     root: Sprite2d<EmptyMaterial2d>;
 
@@ -30,16 +33,20 @@ export class Renderer2d<T extends RenderSystem2d> {
             0
         );
 
-        this._ts = 0;
         this._ups = ups ?? 60;
         this._prev = 0;
         this._lag = 0;
         this._times = [];
         this._fps = 0;
+
+        this._fc = 0;
+        this._uc = 0;
+        this._uArg = null;
     }
 
-    onUpdate(update: () => void): void {
-        this._update = update;
+    onUpdate(cb: (uc?: number, fc?: number) => void, thisArg?: any): void {
+        this._update = cb;
+        this._uArg = thisArg ?? cb;
     }
 
     get ups(): number {
@@ -88,7 +95,8 @@ export class Renderer2d<T extends RenderSystem2d> {
             this.sp(this.root);
 
             if (this._update) {
-                this._update();
+                this._update.call(this._uArg, this._uc, this._fc);
+                this._uc++;
 
                 this.up(this.root);
             }
@@ -120,6 +128,7 @@ export class Renderer2d<T extends RenderSystem2d> {
     }
 
     private render(timestamp?: number): void {
+        this._fc++;
         const lagOffset = this.getLagOffset(timestamp ?? 0);
         const now = performance.now();
 

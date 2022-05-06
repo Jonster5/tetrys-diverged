@@ -19,8 +19,6 @@ export class ClassicGame {
 
     player: Player;
 
-    counter: number;
-
     constructor(target: HTMLElement) {
         this.score = writable(0);
         this.highScore = writable(0);
@@ -28,41 +26,27 @@ export class ClassicGame {
 
         this.renderer = new Renderer2d<CanvasRenderingSystem2d>(
             new CanvasRenderingSystem2d(target, { size: new Vec2(300, 540) }),
-            { ups: 30 }
+            { ups: 60 }
         );
 
         this.player = new Player(
             this.renderer.root,
-            ShapeType.TPiece,
+            ShapeType.IPiece,
             new Vec2(0 - 15, 270 - 15)
         );
 
         this.board = new Board(new Vec2(10, 18));
 
-        this.counter = 0;
-
-        this.renderer.onUpdate(this.update.bind(this));
+        this.renderer.onUpdate(this.update, this);
 
         this.renderer.start();
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === ' ') {
-                this.player.center.setRotation(
-                    this.player.center.rotation + Math.PI / 2
-                );
-            }
-        });
-
-        // this.board.collision(this.player);
     }
 
-    update() {
+    update(clock: number) {
         if (get(this.pause)) return;
 
-        this.counter++;
-
-        this.player.update(this.board, this.counter);
-        this.board.update(this.player, this.counter);
+        this.player.update(this.board, clock);
+        this.board.update(this.player, clock);
 
         // if (this.board.collision(this.player) === true) {
         // this.pause.set(true);

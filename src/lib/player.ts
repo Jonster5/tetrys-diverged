@@ -1,5 +1,11 @@
 import { Board } from '@lib/board';
-import { getColor, getPieceMatrix, ShapeType } from '@lib/shapes';
+import {
+    deepCopy,
+    getColor,
+    getMidIndex,
+    getPieceMatrix,
+    ShapeType,
+} from '@lib/shapes';
 import { Entity2d, Sprite2d } from '@utils/entity2d';
 import { keyTracker } from '@utils/keyTracker';
 import { EmptyMaterial2d, SquareMaterial2d } from '@utils/material2d';
@@ -19,11 +25,9 @@ export class Player {
     shape: ShapeType;
     matrix: number[][];
 
-    center: Entity2d;
+    parent: Entity2d;
 
-    pivot: Vec2 | null;
-
-    eventQ: [];
+    center: Vec2;
 
     rightKeys: keyTracker;
     leftKeys: keyTracker;
@@ -32,24 +36,39 @@ export class Player {
     softDropKeys: keyTracker;
     hardDropKeys: keyTracker;
 
+    mrCount: number | null;
+    mlCount: number | null;
+    mdCount: number | null;
+    srCount: number | null;
+    slCount: number | null;
+
     constructor(
         root: Sprite2d<EmptyMaterial2d>,
         shape: ShapeType,
         location: Vec2
     ) {
-        const { matrix, pivot } = getPieceMatrix(shape);
+        const matrix = getPieceMatrix(shape);
         this.shape = shape;
         this.matrix = matrix;
 
-        this.eventQ = [];
+        this.center = new Vec2(
+            getMidIndex(matrix.length),
+            getMidIndex(matrix[0].length)
+        );
 
-        if (pivot) this.pivot = Vec2.fromObject(pivot);
-        else this.pivot = null;
+        const modifier = ((matrix.length / 2) * 10) % 10 === 0 ? 15 : 0;
 
-        this.center = new Sprite2d(
+        this.parent = new Sprite2d(
             new EmptyMaterial2d(),
-            location,
+            Vec2.add(location, new Vec2(modifier, modifier)),
             new Vec2(0, 0),
+            0
+        );
+
+        const c = new Sprite2d(
+            new SquareMaterial2d({ color: 'white' }),
+            new Vec2(0, 0),
+            new Vec2(10, 10),
             0
         );
 
@@ -61,19 +80,21 @@ export class Player {
                     new SquareMaterial2d({
                         color: getColor(shape),
                     }),
-
-                    this.pivot
-                        ? new Vec2((x - pivot.x) * 30, -(y - pivot.y) * 30)
-                        : new Vec2(x * 30, -y * 30),
-                    new Vec2(31, 31),
+                    new Vec2(
+                        (x - this.center.x) * 30 - modifier,
+                        -(y - this.center.y) * 30 + modifier
+                    ),
+                    new Vec2(30.1, 30.1),
                     0
                 );
 
-                this.center.add(square);
+                this.parent.add(square);
             });
         });
 
-        root.add(this.center);
+        this.parent.add(c);
+
+        root.add(this.parent);
 
         this.rightKeys = new keyTracker('arrowRight', 'd');
         this.leftKeys = new keyTracker('arrowLeft', 'a');
@@ -81,16 +102,56 @@ export class Player {
         this.spinLKeys = new keyTracker('');
         this.softDropKeys = new keyTracker('arrowDown', 's');
         this.hardDropKeys = new keyTracker(' ');
+
+        this.mdCount = null;
+        this.mrCount = null;
+        this.mlCount = null;
+        this.srCount = null;
+        this.slCount = null;
     }
 
     update(board: Board, clock: number) {
-        if (clock % 12 === 0 && this.softDropKeys.isUp) this.moveDown(board);
+        if (clock % 22 === 0 && this.softDropKeys.isUp) this.moveDown(board);
 
-        if (clock % 3 === 0) {
-            if (this.softDropKeys.isDown) this.moveDown(board);
-            if (this.rightKeys.isDown) this.moveRight(board);
-            if (this.leftKeys.isDown) this.moveLeft(board);
-        }
+        if (!this.mdCount && this.softDropKeys.isDown) this.mdCount = clock % 6;
+        if (this.mdCount && this.softDropKeys.isUp) this.mdCount = null;
+
+        if (
+            this.softDropKeys.isDown &&
+            this.mdCount &&
+            (clock % 6) - this.mdCount === 0
+        )
+            this.moveDown(board);
+
+        if (!this.mrCount && this.rightKeys.isDown) this.mrCount = clock % 6;
+        if (this.mrCount && this.rightKeys.isUp) this.mrCount = null;
+
+        if (
+            this.rightKeys.isDown &&
+            this.mrCount &&
+            (clock % 6) - this.mrCount === 0
+        )
+            this.moveRight(board);
+
+        if (!this.mlCount && this.leftKeys.isDown) this.mlCount = clock % 6;
+        if (this.mlCount && this.leftKeys.isUp) this.mlCount = null;
+
+        if (
+            this.leftKeys.isDown &&
+            this.mlCount &&
+            (clock % 6) - this.mlCount === 0
+        )
+            this.moveLeft(board);
+
+        if (!this.srCount && this.spinRKeys.isDown) this.srCount = clock % 6;
+        if (this.srCount && this.spinRKeys.isUp) this.srCount = null;
+
+        if (
+            this.spinRKeys.isDown &&
+            this.srCount &&
+            (clock % 6) - this.srCount === 0
+        )
+            this.rotateRight(board);
     }
 
     moveDown(board: Board) {
@@ -123,12 +184,35 @@ export class Player {
         if (!board.overlap(current, future)) this.position.x -= 30;
     }
 
-    rotateRight() {}
+    rotateRight(board: Board) {
+        const current = board.getMerged(this);
+
+        const cm = deepCopy(this.matrix).reverse();
+
+        const matrix = Array.from(Array(this.matrix.length), () =>
+            Array(this.matrix[0].length).fill(0)
+        ).map((row, y) => row.map((_, x) => cm[x][y]));
+
+        console.log(cm, matrix);
+
+        const future = board.getMerged({
+            center: this.center,
+            position: this.position,
+            matrix,
+        });
+
+        console.log(current, future);
+
+        if (!board.overlap(current, future)) {
+            this.matrix = matrix;
+            this.parent.setRotation(this.parent.rotation - Math.PI / 2);
+        }
+    }
 
     rotateLeft() {}
 
     get position(): Vec2 {
-        return this.center.position;
+        return this.parent.position;
     }
 
     terminate() {}

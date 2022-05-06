@@ -1,3 +1,5 @@
+// export type KeyIdentifier = '' | '';
+
 export class keyTracker {
     keys: string[];
 

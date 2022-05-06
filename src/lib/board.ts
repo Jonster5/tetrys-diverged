@@ -1,5 +1,5 @@
 import { Player } from '@lib/player';
-import { ShapeType } from '@lib/shapes';
+import { deepCopy, ShapeType } from '@lib/shapes';
 import { Vec2 } from 'raxis-core';
 
 export class Board {
@@ -39,17 +39,16 @@ export class Board {
         return Vec2.multiplyScalar(position, 30).subtractScalar(15);
     }
 
-    incorporate(player: Player) {
-        const matrix = player.matrix;
-        const pos = this.spatialToMatrix(player.center.position);
-        const pivot = player.pivot;
+    incorporate(props: { matrix: number[][]; position: Vec2; center: Vec2 }) {
+        const { matrix, position, center } = props;
+        const pos = this.spatialToMatrix(position);
 
         for (let r = 0; r < matrix.length; r++) {
             for (let c = 0; c < matrix[r].length; c++) {
                 if (matrix[r][c] === ShapeType.None) continue;
 
-                const x = pos.x + this.size.x / 2 + (c - pivot.x);
-                const y = -pos.y + this.size.y / 2 + (r - pivot.y) - 1;
+                const x = pos.x + this.size.x / 2 + (c - center.x);
+                const y = -pos.y + this.size.y / 2 + (r - center.y) - 1;
 
                 if (x < 0 || x > this.size.x || y < 0 || y > this.size.y)
                     continue;
@@ -62,19 +61,19 @@ export class Board {
     getMerged(props: {
         matrix: number[][];
         position: Vec2;
-        pivot: Vec2;
+        center: Vec2;
     }): number[][] {
-        const { matrix, position, pivot } = props;
+        const { matrix, position, center } = props;
         const pos = this.spatialToMatrix(position);
 
-        const merged = JSON.parse(JSON.stringify(this.matrix));
+        const merged = deepCopy(this.matrix);
 
         for (let r = 0; r < matrix.length; r++) {
             for (let c = 0; c < matrix[r].length; c++) {
                 if (matrix[r][c] === ShapeType.None) continue;
 
-                const x = pos.x + this.size.x / 2 + (c - pivot.x);
-                const y = -pos.y + this.size.y / 2 + (r - pivot.y) - 1;
+                const x = pos.x + this.size.x / 2 + (c - center.x);
+                const y = -pos.y + this.size.y / 2 + (r - center.y) - 1;
 
                 if (
                     x < 0 ||
