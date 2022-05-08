@@ -21,9 +21,17 @@ export enum Event {
     hard,
 }
 
+export interface PreviousPlayerState {
+    rightKeys: boolean;
+    leftKeys: boolean;
+    spinRKeys: boolean;
+    spinLKeys: boolean;
+    softDropKeys: boolean;
+}
+
 export class Player {
     shape: ShapeType;
-    matrix: number[][];
+    matrix: ShapeType[][];
 
     parent: Entity2d;
 
@@ -35,6 +43,7 @@ export class Player {
     spinLKeys: keyTracker;
     softDropKeys: keyTracker;
     hardDropKeys: keyTracker;
+    holdKeys: keyTracker;
 
     mrCount: number | null;
     mlCount: number | null;
@@ -42,10 +51,15 @@ export class Player {
     srCount: number | null;
     slCount: number | null;
 
+    tSLD: number = 0; // time since last downward move
+
+    needsRespawn: boolean;
+
     constructor(
         root: Sprite2d<EmptyMaterial2d>,
         shape: ShapeType,
-        location: Vec2
+        location: Vec2,
+        prevState?: PreviousPlayerState
     ) {
         const matrix = getPieceMatrix(shape);
         this.shape = shape;
@@ -65,12 +79,12 @@ export class Player {
             0
         );
 
-        const c = new Sprite2d(
-            new SquareMaterial2d({ color: 'white' }),
-            new Vec2(0, 0),
-            new Vec2(10, 10),
-            0
-        );
+        // const c = new Sprite2d(
+        //     new SquareMaterial2d({ color: 'white' }),
+        //     new Vec2(0, 0),
+        //     new Vec2(10, 10),
+        //     0
+        // );
 
         this.matrix.forEach((row, y) => {
             row.forEach((s, x) => {
@@ -92,7 +106,7 @@ export class Player {
             });
         });
 
-        this.parent.add(c);
+        // this.parent.add(c);
 
         root.add(this.parent);
 
@@ -102,15 +116,38 @@ export class Player {
         this.spinLKeys = new keyTracker('');
         this.softDropKeys = new keyTracker('arrowDown', 's');
         this.hardDropKeys = new keyTracker(' ');
+        this.holdKeys = new keyTracker('c');
 
         this.mdCount = null;
         this.mrCount = null;
         this.mlCount = null;
         this.srCount = null;
         this.slCount = null;
+
+        if (prevState) {
+            // this.rightKeys.isDown = prevState.rightKeys;
+            // this.rightKeys.isUp = !prevState.rightKeys;
+            // this.leftKeys.isDown = prevState.leftKeys;
+            // this.leftKeys.isUp = !prevState.leftKeys;
+            // this.spinRKeys.isDown = prevState.spinRKeys;
+            // this.spinRKeys.isUp = !prevState.spinRKeys;
+            // this.spinLKeys.isDown = prevState.spinLKeys;
+            // this.spinLKeys.isUp = !prevState.spinLKeys;
+            // this.softDropKeys.isDown = prevState.softDropKeys;
+            // this.softDropKeys.isUp = !prevState.softDropKeys;
+            // this.mdCount = prevState.softDropKeys ? 1 : null;
+            // this.mrCount = prevState.rightKeys ? 1 : null;
+            // this.mlCount = prevState.leftKeys ? 1 : null;
+            // this.srCount = prevState.spinRKeys ? 1 : null;
+            // this.slCount = prevState.spinLKeys ? 1 : null;
+        }
+
+        this.needsRespawn = false;
     }
 
-    update(board: Board, clock: number) {
+    update(board: Board, clock: number): [number] {
+        let pScoreChange = 0;
+
         if (clock % 22 === 0 && this.softDropKeys.isUp) this.moveDown(board);
 
         if (!this.mdCount && this.softDropKeys.isDown) this.mdCount = clock % 6;
@@ -119,9 +156,11 @@ export class Player {
         if (
             this.softDropKeys.isDown &&
             this.mdCount &&
-            (clock % 6) - this.mdCount === 0
-        )
-            this.moveDown(board);
+            (clock % 4) - this.mdCount === 0
+        ) {
+            const [psc] = this.softDrop(board);
+            pScoreChange += psc;
+        }
 
         if (!this.mrCount && this.rightKeys.isDown) this.mrCount = clock % 6;
         if (this.mrCount && this.rightKeys.isUp) this.mrCount = null;
@@ -152,6 +191,12 @@ export class Player {
             (clock % 6) - this.srCount === 0
         )
             this.rotateRight(board);
+
+        if (this.tSLD > 30) {
+            this.needsRespawn = true;
+        }
+
+        return [pScoreChange];
     }
 
     moveDown(board: Board) {
@@ -161,7 +206,28 @@ export class Player {
 
         const future = board.getMerged({ ...this, position });
 
-        if (!board.overlap(current, future)) this.position.y -= 30;
+        const overlap = !board.overlap(current, future);
+
+        if (overlap) {
+            this.position.y -= 30;
+            this.tSLD = 0;
+        } else this.tSLD += 22;
+    }
+
+    softDrop(board: Board): [number] {
+        const current = board.getMerged(this);
+
+        const position = Vec2.add(this.position, new Vec2(0, -30));
+
+        const future = board.getMerged({ ...this, position });
+
+        if (!board.overlap(current, future)) {
+            this.position.y -= 30;
+            return [1];
+        } else {
+            this.tSLD += 6;
+            return [0];
+        }
     }
 
     moveRight(board: Board) {
@@ -193,15 +259,11 @@ export class Player {
             Array(this.matrix[0].length).fill(0)
         ).map((row, y) => row.map((_, x) => cm[x][y]));
 
-        console.log(cm, matrix);
-
         const future = board.getMerged({
             center: this.center,
             position: this.position,
             matrix,
         });
-
-        console.log(current, future);
 
         if (!board.overlap(current, future)) {
             this.matrix = matrix;
@@ -215,5 +277,26 @@ export class Player {
         return this.parent.position;
     }
 
-    terminate() {}
+    terminate(): [PreviousPlayerState] {
+        this.parent.children.forEach((c) => c.terminate());
+        this.parent.terminate();
+
+        const prevState: PreviousPlayerState = {
+            rightKeys: this.rightKeys.isDown,
+            leftKeys: this.leftKeys.isDown,
+            spinRKeys: this.spinRKeys.isDown,
+            spinLKeys: this.spinLKeys.isDown,
+            softDropKeys: this.softDropKeys.isDown,
+        };
+
+        this.rightKeys.terminate();
+        this.leftKeys.terminate();
+        this.spinRKeys.terminate();
+        this.spinLKeys.terminate();
+        this.softDropKeys.terminate();
+        this.hardDropKeys.terminate();
+        this.holdKeys.terminate();
+
+        return [prevState];
+    }
 }

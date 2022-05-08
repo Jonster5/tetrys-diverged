@@ -18,7 +18,15 @@
             game.restart();
         }
     };
+
+    const keyDown = (e: KeyboardEvent) => {
+        if (e.key === 'r') {
+            restart();
+        }
+    };
 </script>
+
+<svelte:window on:keydown={keyDown} />
 
 <div bind:this={target} />
 

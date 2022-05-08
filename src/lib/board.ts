@@ -1,47 +1,120 @@
 import { Player } from '@lib/player';
-import { deepCopy, ShapeType } from '@lib/shapes';
+import { deepCopy, getColor, ShapeType } from '@lib/shapes';
+import { Entity2d, Sprite2d } from '@utils/entity2d';
+import { SquareMaterial2d } from '@utils/material2d';
 import { Vec2 } from 'raxis-core';
 
 export class Board {
-    matrix: number[][];
+    root: Entity2d;
+
+    matrix: ShapeType[][];
+    blocks: Sprite2d<SquareMaterial2d>[][];
 
     readonly size: Vec2;
 
-    constructor(size: Vec2) {
-        this.matrix = [];
+    constructor(size: Vec2, root: Entity2d) {
+        this.root = root;
 
-        for (let y = 0; y < size.y; y++) {
-            this.matrix[y] = [];
+        this.matrix = new Array(size.y)
+            .fill(0)
+            .map((row) => new Array(size.x).fill(0));
 
-            for (let x = 0; x < size.x; x++) {
-                this.matrix[y][x] = 0;
-            }
-        }
+        this.blocks = new Array(size.y)
+            .fill(0)
+            .map((row) => new Array(size.x).fill(null));
 
         this.size = size.clone();
     }
 
-    update(player: Player, clock: number) {
-        player.matrix.forEach((row, y) => {
-            row.forEach((s, x) => {
-                if (s === 0) return;
+    update(player: Player, clock: number): [boolean, number, boolean] {
+        let bScoreChange = 0;
 
-                // this.matrix[y + player.pos.y][x + player.pos.x] = s;
-            });
-        });
+        if (player.needsRespawn) {
+            this.incorporate(player);
+            this.updateRenderMatrix(player);
+            bScoreChange += 10;
+        }
+
+        let nc = 0;
+        for (let r = 0; r < this.matrix.length; r++) {
+            const isComplete = this.matrix[r].every((val) => val !== 0);
+
+            if (isComplete) {
+                this.matrix.splice(r, 1);
+                this.matrix.unshift(Array(this.size.x).fill(0));
+                this.updateRenderMatrix(player);
+                nc++;
+            }
+        }
+
+        bScoreChange +=
+            nc === 1
+                ? 100 // 85
+                : nc === 2
+                ? 300 // 235
+                : nc === 3
+                ? 500 // 635
+                : nc === 4
+                ? 800 // 1135
+                : 0;
+
+        let gameOver = false;
+        if (!this.matrix[2].every((val) => val === 0)) gameOver = true;
+
+        return [player.needsRespawn, bScoreChange, gameOver];
     }
 
-    spatialToMatrix(position: Vec2) {
-        return Vec2.divideScalar(position, 30).floor();
+    updateRenderMatrix(player: Player) {
+        for (let r = 0; r < this.matrix.length; r++) {
+            for (let c = 0; c < this.matrix[r].length; c++) {
+                if (this.matrix[r][c] === ShapeType.None && this.blocks[r][c]) {
+                    if (this.blocks[r][c]) this.blocks[r][c].terminate();
+                    this.blocks[r][c] = null;
+                    continue;
+                }
+
+                if (
+                    this.matrix[r][c] !== ShapeType.None &&
+                    !this.blocks[r][c]
+                ) {
+                    this.blocks[r][c] = new Sprite2d(
+                        new SquareMaterial2d({
+                            color: getColor(this.matrix[r][c]),
+                        }),
+                        this.matrixToSpatial(
+                            new Vec2(c, r),
+                            player.matrix.length
+                        ),
+                        new Vec2(30.1, 30.1)
+                    );
+
+                    this.root.add(this.blocks[r][c]);
+                }
+            }
+        }
     }
 
-    matrixToSpatial(position: Vec2) {
-        return Vec2.multiplyScalar(position, 30).subtractScalar(15);
+    spatialToMatrix(position: Vec2, length: number): Vec2 {
+        return Vec2.subtract(
+            position,
+            new Vec2(((length + 1) % 2) * 15, ((length + 1) % 2) * -15)
+        )
+            .divideScalar(30)
+            .floor();
+    }
+
+    matrixToSpatial(position: Vec2, length: number) {
+        return (
+            Vec2.subtract(position, new Vec2(this.size.x / 2, this.size.y / 2))
+                .multiply(new Vec2(30, -30))
+                // .add(new Vec2(((length + 1) % 2) * 15, ((length + 1) % 2) * 15))
+                .add(new Vec2(15, -15))
+        );
     }
 
     incorporate(props: { matrix: number[][]; position: Vec2; center: Vec2 }) {
         const { matrix, position, center } = props;
-        const pos = this.spatialToMatrix(position);
+        const pos = this.spatialToMatrix(position, matrix.length);
 
         for (let r = 0; r < matrix.length; r++) {
             for (let c = 0; c < matrix[r].length; c++) {
@@ -50,7 +123,12 @@ export class Board {
                 const x = pos.x + this.size.x / 2 + (c - center.x);
                 const y = -pos.y + this.size.y / 2 + (r - center.y) - 1;
 
-                if (x < 0 || x > this.size.x || y < 0 || y > this.size.y)
+                if (
+                    x < 0 ||
+                    x > this.size.x - 1 ||
+                    y < 0 ||
+                    y > this.size.y - 1
+                )
                     continue;
 
                 this.matrix[y][x] = matrix[r][c];
@@ -64,7 +142,7 @@ export class Board {
         center: Vec2;
     }): number[][] {
         const { matrix, position, center } = props;
-        const pos = this.spatialToMatrix(position);
+        const pos = this.spatialToMatrix(position, matrix.length);
 
         const merged = deepCopy(this.matrix);
 

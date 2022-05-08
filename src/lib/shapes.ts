@@ -9,6 +9,11 @@ export enum ShapeType {
     SPiece,
 }
 
+export let createQueue = () =>
+    Array.from(new Array(14), (_, i) => ((i + 1) % 7) + 1).sort(
+        () => Math.random() - 0.5
+    );
+
 export const getMidIndex = (x: number) => (x + (x % 2)) / 2 - 1;
 
 export const deepCopy = (m: number[][]) => JSON.parse(JSON.stringify(m));

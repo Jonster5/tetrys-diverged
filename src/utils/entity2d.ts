@@ -90,6 +90,10 @@ export abstract class Entity2d {
     halfSize(): Vec2 {
         return Vec2.divideScalar(this.size, 2);
     }
+
+    terminate() {
+        if (this._parent) this._parent.remove(this);
+    }
 }
 
 export class Sprite2d<T extends Material2d> extends Entity2d {
