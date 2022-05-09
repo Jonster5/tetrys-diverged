@@ -38,7 +38,7 @@ export class ClassicGame {
         this.nQueue = [];
 
         this.player = new Player(
-            this.renderer.root,
+            this,
             this.getNextPiece(),
             new Vec2(0 - 15, 270 - 15)
         );
@@ -73,7 +73,7 @@ export class ClassicGame {
             const [prevState] = this.player.terminate();
 
             this.player = new Player(
-                this.renderer.root,
+                this,
                 this.getNextPiece(),
                 new Vec2(0 - 15, 300 - 15),
                 prevState
@@ -100,6 +100,7 @@ export class ClassicGame {
 
     restart() {
         this.needsRestart = false;
+        this.pause.set(false);
 
         this.score.set(0);
         this.board = new Board(new Vec2(10, 18), this.renderer.root);
@@ -111,7 +112,7 @@ export class ClassicGame {
         this.nQueue = [];
 
         this.player = new Player(
-            this.renderer.root,
+            this,
             this.getNextPiece(),
             new Vec2(0 - 15, 300 - 15)
         );

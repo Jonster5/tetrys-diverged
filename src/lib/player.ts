@@ -1,4 +1,5 @@
 import { Board } from '@lib/board';
+import { ClassicGame } from '@lib/game';
 import {
     deepCopy,
     getColor,
@@ -56,11 +57,14 @@ export class Player {
     needsRespawn: boolean;
 
     constructor(
-        root: Sprite2d<EmptyMaterial2d>,
+        game: ClassicGame,
         shape: ShapeType,
         location: Vec2,
         prevState?: PreviousPlayerState
     ) {
+        const root = game.renderer.root;
+        const board = game.board;
+
         const matrix = getPieceMatrix(shape);
         this.shape = shape;
         this.matrix = matrix;
@@ -110,13 +114,15 @@ export class Player {
 
         root.add(this.parent);
 
-        this.rightKeys = new keyTracker('arrowRight', 'd');
-        this.leftKeys = new keyTracker('arrowLeft', 'a');
-        this.spinRKeys = new keyTracker('arrowUp', 'w');
+        this.rightKeys = new keyTracker('ArrowRight', 'd');
+        this.leftKeys = new keyTracker('ArrowLeft', 'a');
+        this.spinRKeys = new keyTracker('ArrowUp', 'w');
         this.spinLKeys = new keyTracker('');
-        this.softDropKeys = new keyTracker('arrowDown', 's');
+        this.softDropKeys = new keyTracker('ArrowDown', 's');
         this.hardDropKeys = new keyTracker(' ');
         this.holdKeys = new keyTracker('c');
+
+        this.rightKeys.onKeyDown(() => this.moveRight(board));
 
         this.mdCount = null;
         this.mrCount = null;
@@ -125,21 +131,21 @@ export class Player {
         this.slCount = null;
 
         if (prevState) {
-            // this.rightKeys.isDown = prevState.rightKeys;
-            // this.rightKeys.isUp = !prevState.rightKeys;
-            // this.leftKeys.isDown = prevState.leftKeys;
-            // this.leftKeys.isUp = !prevState.leftKeys;
-            // this.spinRKeys.isDown = prevState.spinRKeys;
-            // this.spinRKeys.isUp = !prevState.spinRKeys;
-            // this.spinLKeys.isDown = prevState.spinLKeys;
-            // this.spinLKeys.isUp = !prevState.spinLKeys;
-            // this.softDropKeys.isDown = prevState.softDropKeys;
-            // this.softDropKeys.isUp = !prevState.softDropKeys;
-            // this.mdCount = prevState.softDropKeys ? 1 : null;
-            // this.mrCount = prevState.rightKeys ? 1 : null;
-            // this.mlCount = prevState.leftKeys ? 1 : null;
-            // this.srCount = prevState.spinRKeys ? 1 : null;
-            // this.slCount = prevState.spinLKeys ? 1 : null;
+            this.rightKeys.isDown = prevState.rightKeys;
+            this.rightKeys.isUp = !prevState.rightKeys;
+            this.leftKeys.isDown = prevState.leftKeys;
+            this.leftKeys.isUp = !prevState.leftKeys;
+            this.spinRKeys.isDown = prevState.spinRKeys;
+            this.spinRKeys.isUp = !prevState.spinRKeys;
+            this.spinLKeys.isDown = prevState.spinLKeys;
+            this.spinLKeys.isUp = !prevState.spinLKeys;
+            this.softDropKeys.isDown = prevState.softDropKeys;
+            this.softDropKeys.isUp = !prevState.softDropKeys;
+            this.mdCount = prevState.softDropKeys ? 1 : null;
+            this.mrCount = prevState.rightKeys ? 1 : null;
+            this.mlCount = prevState.leftKeys ? 1 : null;
+            this.srCount = prevState.spinRKeys ? 1 : null;
+            this.slCount = prevState.spinLKeys ? 1 : null;
         }
 
         this.needsRespawn = false;
@@ -150,7 +156,7 @@ export class Player {
 
         if (clock % 22 === 0 && this.softDropKeys.isUp) this.moveDown(board);
 
-        if (!this.mdCount && this.softDropKeys.isDown) this.mdCount = clock % 6;
+        if (!this.mdCount && this.softDropKeys.isDown) this.mdCount = clock % 4;
         if (this.mdCount && this.softDropKeys.isUp) this.mdCount = null;
 
         if (

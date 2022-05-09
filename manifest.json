@@ -6,10 +6,11 @@
 
     "action": {
         "default_icon": {
-            "16": "/icons/16.png",
-            "32": "/icons/32.png",
-            "64": "/icons/64.png",
-            "128": "/icons/128.png"
+            "16": "./icons/logo16.png",
+            "32": "./icons/logo32.png",
+            "48": "./icons/logo48.png",
+            "64": "./icons/logo64.png",
+            "128": "./icons/logo128.png"
         },
         "default_title": "Play Tetrys",
         "default_popup": "index.html"

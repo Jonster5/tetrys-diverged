@@ -1,5 +1,6 @@
 export enum ShapeType {
-    None = 0,
+    Removed = -1,
+    None,
     IPiece,
     JPiece,
     LPiece,
@@ -16,7 +17,7 @@ export let createQueue = () =>
 
 export const getMidIndex = (x: number) => (x + (x % 2)) / 2 - 1;
 
-export const deepCopy = (m: number[][]) => JSON.parse(JSON.stringify(m));
+export const deepCopy = (m: ShapeType[][]) => JSON.parse(JSON.stringify(m));
 
 export const getColor = (type: ShapeType): string => {
     switch (type) {

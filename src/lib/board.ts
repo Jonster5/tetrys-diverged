@@ -40,9 +40,10 @@ export class Board {
             const isComplete = this.matrix[r].every((val) => val !== 0);
 
             if (isComplete) {
-                this.matrix.splice(r, 1);
-                this.matrix.unshift(Array(this.size.x).fill(0));
+                this.matrix[r] = new Array(this.size.x).fill(-1);
+
                 this.updateRenderMatrix(player);
+
                 nc++;
             }
         }
@@ -65,18 +66,40 @@ export class Board {
     }
 
     updateRenderMatrix(player: Player) {
+        let cStart = 0;
+        let cEnd = 0;
+
+        for (let r = 0; r < this.matrix.length; r++) {
+            if (this.matrix[r].every((val) => val === ShapeType.Removed)) {
+                cStart = r;
+                break;
+            }
+        }
+
+        for (let r = this.matrix.length - 1; r >= 0; r--) {
+            if (this.matrix[r].every((val) => val === ShapeType.Removed)) {
+                cEnd = r + 1;
+                break;
+            }
+        }
+
+        const cRange = cEnd - cStart;
+
         for (let r = 0; r < this.matrix.length; r++) {
             for (let c = 0; c < this.matrix[r].length; c++) {
-                if (this.matrix[r][c] === ShapeType.None && this.blocks[r][c]) {
+                // remove block if destroyed
+                if (this.matrix[r][c] === ShapeType.Removed) {
                     if (this.blocks[r][c]) this.blocks[r][c].terminate();
                     this.blocks[r][c] = null;
-                    continue;
                 }
 
-                if (
-                    this.matrix[r][c] !== ShapeType.None &&
-                    !this.blocks[r][c]
-                ) {
+                // make blocks fall
+                if (cRange > 0 && r < cStart && this.blocks[r][c]) {
+                    this.blocks[r][c].position.y -= 30 * cRange;
+                }
+
+                // add block if created
+                if (this.matrix[r][c] > 0 && !this.blocks[r][c]) {
                     this.blocks[r][c] = new Sprite2d(
                         new SquareMaterial2d({
                             color: getColor(this.matrix[r][c]),
@@ -91,6 +114,16 @@ export class Board {
                     this.root.add(this.blocks[r][c]);
                 }
             }
+        }
+
+        for (let r = 0; r < this.matrix.length; r++) {
+            if (this.matrix[r].every((v) => v !== ShapeType.Removed)) continue;
+
+            this.matrix.splice(r, 1);
+            this.blocks.splice(r, 1);
+
+            this.matrix.unshift(new Array(this.size.x).fill(ShapeType.None));
+            this.blocks.unshift(new Array(this.size.x).fill(null));
         }
     }
 
