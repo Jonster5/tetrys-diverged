@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { ClassicGame } from '@lib/game';
     import Header from '@components/Header.svelte';
+    import { getStorage } from '@lib/storage';
 
     let target: HTMLElement;
     let game: ClassicGame;
@@ -9,7 +10,9 @@
     let hasLoaded = false;
 
     onMount(() => {
-        game = new ClassicGame(target);
+        const storage = getStorage();
+
+        game = new ClassicGame(target, storage);
         hasLoaded = true;
     });
 

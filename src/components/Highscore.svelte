@@ -4,7 +4,7 @@
     export let highscore: Writable<number>;
 </script>
 
-<span>600</span>
+<span>{$highscore}</span>
 
 <style lang="scss">
     span {

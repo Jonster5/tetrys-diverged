@@ -1,3 +1,6 @@
+import { size } from '@lib/constants';
+import { Vec2 } from 'raxis-core';
+
 export enum ShapeType {
     Removed = -1,
     None,
@@ -18,6 +21,24 @@ export let createQueue = () =>
 export const getMidIndex = (x: number) => (x + (x % 2)) / 2 - 1;
 
 export const deepCopy = (m: ShapeType[][]) => JSON.parse(JSON.stringify(m));
+
+export function spatialToMatrix(position: Vec2, length: number): Vec2 {
+    return Vec2.subtract(
+        position,
+        new Vec2(((length + 1) % 2) * 15, ((length + 1) % 2) * -15)
+    )
+        .divideScalar(30)
+        .floor();
+}
+
+export function matrixToSpatial(position: Vec2) {
+    return (
+        Vec2.subtract(position, new Vec2(size.x / 2, size.y / 2))
+            .multiply(new Vec2(30, -30))
+            // .add(new Vec2(((length + 1) % 2) * 15, ((length + 1) % 2) * 15))
+            .add(new Vec2(15, -15))
+    );
+}
 
 export const getColor = (type: ShapeType): string => {
     switch (type) {

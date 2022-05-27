@@ -7,6 +7,7 @@ import {
     getPieceMatrix,
     ShapeType,
 } from '@lib/shapes';
+import { setPlayer } from '@lib/storage';
 import { Entity2d, Sprite2d } from '@utils/entity2d';
 import { keyTracker } from '@utils/keyTracker';
 import { EmptyMaterial2d, SquareMaterial2d } from '@utils/material2d';
@@ -55,30 +56,36 @@ export class Player {
     tSLD: number = 0; // time since last downward move
 
     needsRespawn: boolean;
+    modifier: number;
 
     constructor(
         game: ClassicGame,
         shape: ShapeType,
-        location: Vec2,
-        prevState?: PreviousPlayerState
+        position: Vec2,
+        prevState?: PreviousPlayerState,
+        matrix?: ShapeType[][]
     ) {
         const root = game.renderer.root;
         const board = game.board;
 
-        const matrix = getPieceMatrix(shape);
+        if (matrix) {
+            this.matrix = matrix;
+        } else {
+            this.matrix = getPieceMatrix(shape);
+        }
+
         this.shape = shape;
-        this.matrix = matrix;
 
         this.center = new Vec2(
-            getMidIndex(matrix.length),
-            getMidIndex(matrix[0].length)
+            getMidIndex(this.matrix.length),
+            getMidIndex(this.matrix[0].length)
         );
 
-        const modifier = ((matrix.length / 2) * 10) % 10 === 0 ? 15 : 0;
+        this.modifier = ((this.matrix.length / 2) * 10) % 10 === 0 ? 15 : 0;
 
         this.parent = new Sprite2d(
             new EmptyMaterial2d(),
-            Vec2.add(location, new Vec2(modifier, modifier)),
+            Vec2.add(position, new Vec2(this.modifier, this.modifier)),
             new Vec2(0, 0),
             0
         );
@@ -99,8 +106,8 @@ export class Player {
                         color: getColor(shape),
                     }),
                     new Vec2(
-                        (x - this.center.x) * 30 - modifier,
-                        -(y - this.center.y) * 30 + modifier
+                        (x - this.center.x) * 30 - this.modifier,
+                        -(y - this.center.y) * 30 + this.modifier
                     ),
                     new Vec2(30.1, 30.1),
                     0
@@ -214,6 +221,8 @@ export class Player {
 
         const overlap = !board.overlap(current, future);
 
+        setPlayer(this);
+
         if (overlap) {
             this.position.y -= 30;
             this.tSLD = 0;
@@ -226,6 +235,8 @@ export class Player {
         const position = Vec2.add(this.position, new Vec2(0, -30));
 
         const future = board.getMerged({ ...this, position });
+
+        setPlayer(this);
 
         if (!board.overlap(current, future)) {
             this.position.y -= 30;
@@ -243,6 +254,8 @@ export class Player {
 
         const future = board.getMerged({ ...this, position });
 
+        setPlayer(this);
+
         if (!board.overlap(current, future)) this.position.x += 30;
     }
 
@@ -252,6 +265,8 @@ export class Player {
         const position = Vec2.add(this.position, new Vec2(-30, 0));
 
         const future = board.getMerged({ ...this, position });
+
+        setPlayer(this);
 
         if (!board.overlap(current, future)) this.position.x -= 30;
     }
@@ -271,6 +286,8 @@ export class Player {
             matrix,
         });
 
+        setPlayer(this);
+
         if (!board.overlap(current, future)) {
             this.matrix = matrix;
             this.parent.setRotation(this.parent.rotation - Math.PI / 2);
@@ -281,6 +298,14 @@ export class Player {
 
     get position(): Vec2 {
         return this.parent.position;
+    }
+
+    playerData() {
+        return {
+            shape: this.shape,
+            matrix: this.matrix,
+            ...Vec2.subtractScalar(this.position, this.modifier),
+        };
     }
 
     terminate(): [PreviousPlayerState] {
