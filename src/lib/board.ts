@@ -94,6 +94,8 @@ export class Board {
         let gameOver = false;
         if (!this.matrix[2].every((val) => val === 0)) gameOver = true;
 
+        setBoard(this);
+
         return [player.needsRespawn, bScoreChange, gameOver];
     }
 
@@ -154,8 +156,6 @@ export class Board {
             this.matrix.unshift(new Array(this.size.x).fill(ShapeType.None));
             this.blocks.unshift(new Array(this.size.x).fill(null));
         }
-
-        setBoard(this);
     }
 
     incorporate(props: { matrix: number[][]; position: Vec2; center: Vec2 }) {

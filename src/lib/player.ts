@@ -236,10 +236,10 @@ export class Player {
 
         const future = board.getMerged({ ...this, position });
 
-        setPlayer(this);
 
         if (!board.overlap(current, future)) {
             this.position.y -= 30;
+            setPlayer(this);
             return [1];
         } else {
             this.tSLD += 6;
@@ -254,9 +254,10 @@ export class Player {
 
         const future = board.getMerged({ ...this, position });
 
-        setPlayer(this);
-
-        if (!board.overlap(current, future)) this.position.x += 30;
+        if (!board.overlap(current, future)) {
+            setPlayer(this);
+            this.position.x += 30;
+        }
     }
 
     moveLeft(board: Board) {
@@ -268,7 +269,10 @@ export class Player {
 
         setPlayer(this);
 
-        if (!board.overlap(current, future)) this.position.x -= 30;
+        if (!board.overlap(current, future)) {
+            setPlayer(this);
+            this.position.x -= 30;
+        }
     }
 
     rotateRight(board: Board) {
@@ -286,9 +290,8 @@ export class Player {
             matrix,
         });
 
-        setPlayer(this);
-
         if (!board.overlap(current, future)) {
+            setPlayer(this);
             this.matrix = matrix;
             this.parent.setRotation(this.parent.rotation - Math.PI / 2);
         }
